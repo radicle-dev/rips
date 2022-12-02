@@ -17,24 +17,22 @@ protocol, but to be a foundation for subsequent RIPs. Various aspects
 of the protocol, in particular around the issues of privacy, censorship
 resistance, peer misbehavior and DoS are left for future RIPs to expand on,
 and won't be tackled here. Additionally, details and specifics on the wire
-protocol, message formats, hash functions and encodings are deliberately
-left out, to focus this proposal on the big ideas.
-
-> This document requires little to no prior knowledge of existing Radicle
-protocols; it is written with the intent of being complete and self-contained.
+protocol, message formats, hash functions and encodings may be left out,
+to focus this proposal on the big ideas.
 
 Overview
 --------
-The Radicle network protocol can be defined through the primary use-case of a
+The Radicle network protocol can be defined through the intended use-case for a
 peer-to-peer code hosting network:
 
 *Alice publishes a repository on the network under a unique identifier, and
-Bob, using that identifier is able to retrieve it and verify its authenticity*.
+Bob, using that identifier is able to retrieve it from the network whether
+Alice is online or offline, and verify the authenticity of the data.*
 
 The above must hold true independent of the network topology and number of
-nodes hosting the project, as long as at least one node is. We can therefore
-say that the primary function of the protocol is to locate repositories on
-the network, and serve them to users, all in a timely, and resource-efficient
+nodes hosting the project, as long as at least one node is hosting it. We can
+therefore say that the primary function of the protocol is to locate repositories
+on the network, and serve them to users, all in a timely, and resource-efficient
 manner.
 
 This functionality can be broken down into three components:
@@ -65,6 +63,7 @@ online at the same time, and would introduce a single point of failure.
 Table of Contents
 -----------------
 * [Repository Identity](#repository-identity)
+    * [The Identity Document](#the-identity-document)
 * [Repository Discovery](#repository-discovery)
     * [Topology](#topology)
     * [Routing](#routing)
@@ -106,39 +105,47 @@ In Radicle, this is no other than the *maintainers* of the repository, since it
 is their mandate to decide what gets merged into a codebase.
 
 We can then define a repository's identity as the set of all branches and tags
-that the maintainers of the repository agreed upon.
+that the maintainers of the repository agreed upon at a given point in time,
+along with a unique identifier.
 
-For anyone to be able to verify this, we require maintainers to provide a
+For anyone to be able to verify an identity, we require maintainers to provide a
 cryptographic signature over the repository's heads, tags, and other relevant
-git references. We call this the *signed refs*. Signed refs can be updated
-whenever there are changes to a repository that are accepted by maintainers.
+git references, along with repository metadata such as name and description.
+We call this the *signed refs*. Signed refs can be updated whenever there are
+changes to a repository that are accepted by maintainers. They represent a
+repository's *canonical state*.
 
-The last question to answer is *who* are the maintainers, and how are they
-determined?
+As for the identifier, it must be provably associated with the above state.
+In other words, it must be possible, given an identifier and a set of signed
+refs, to prove association.
 
-Before a repository can be published to the network, it needs to be converted
+### The Identity Document
+
+Before a repository can be published to the network, it needs to be initialized
 into a Radicle *project*. A project is simply a repository with an associated
 *identity document*. In this document, the public keys of the repository's
 current maintainers are stored. When a project is initialized from an existing
 git repository for the first time, the user initializing becomes the de-facto
 initial maintainer of the project, and his key is included in the new identity
-document. We call this set of trusted keys the project's *delegation*, and each
-key is called a *delegate*. Though these will often map one to one with
+document's key ring. We call this set of trusted keys the project's *delegation*,
+and each key is called a *delegate*. Though these will often map one to one with
 maintainers, this is not a requirement. The only requirement is that they be
-trusted in the context of a given project, as they will be used to determine
-the canonical state of the project's repository.
+trusted to represent a given project, as they will be used to determine
+the canonical state of the project repository.
 
 From this initial identity document we can then derive a unique, stable
-identifier for the project, by hashing the document's contents. To ensure the
-uniqueness of this identifier, in addition to the *delegation*, we include in
-the document a user-chosen *alias* and *description* for the project.
+identifier for the project, by hashing the document's contents. In addition to
+the *delegation*, we include in the document a user-chosen *alias* for the
+project, as well as a *description*. The process for hashing the document shall
+be discussed in a subsequent RIP.
 
 It is by including the identity document in the *signed refs* that we establish
 a relationship between the source code and the identity, and thus associate
 the project identifier with the project source code. Note that this permits
 identical source codes to have more than one identity. This is useful when
 a user wishes to a *fork* a repository. In that case, a new project would
-be initialized with a brand new identifier.
+be initialized with a brand new identifier, but a mostly identical source code
+history.
 
 The storage, update and verification mechanism for the identity document
 will be discussed in more detail in a future RIP. For the purposes of this
@@ -192,14 +199,14 @@ one or more projects on the network.
 Routing information is usually stored in a *routing table* that is keyed
 by the "target", in our case this is the project identifier:
 
-    RoutingTable = BTreeMap<ProjectId, Vec<NodeId>>
+    RoutingTable = BTreeMap<RepositoryId, Vec<NodeId>>
 
 For each project, we keep track of the nodes that are known to host this
-project. Using URNs for project identifiers and IP addresses as node
+project. Using hashes for project identifiers and IP addresses as node
 identifiers, the table might look something like:
 
-    rad:jnrx6t…mfdyy         54.122.99.1, 89.2.23.67
-    rad:gi59bk…l2jfi         66.12.193.8, 89.2.23.67, 12.43.212.9
+    80a2970…        54.122.99.1, 89.2.23.67
+    c5e079e…        66.12.193.8, 89.2.23.67, 12.43.212.9
     …
 
 To build the table, nodes gossip information about other nodes, namely *what*
@@ -226,11 +233,12 @@ The identity of a node on the network is simply the identity of the user
 operating the node. To be able to securely verify data authorship, we use
 public key cryptography, with the public key being used as the node identifier.
 In the case of nodes run by end-users; which is likely most nodes; the
-node's secret key is used for *signed refs* and optionally to sign git commits.
+node's secret key is used to create the *signed refs* and optionally to
+sign git commits.
 
 The use of the same identity for both network communications and code signing
-makes the network more transparent, while allowing nodes to connect to each
-other based on a social graph.
+makes the network more transparent, while allowing nodes to trust each other
+based on the code they publish.
 
 For nodes that are run as always-on "servers", the node identity may not be
 used for signing code. These *seed* nodes only use their secret keys to
@@ -249,17 +257,17 @@ as a short introduction to the topic.
 ### Inventory Announcements
 
 To build their routing table, nodes connecting to the network announce to their
-peers what inventory they have, ie. what projects they are seeding via a *gossip*
-protocol. These announcements are relayed to other connected peers, and so
+peers what inventory they have, ie. what projects they are seeding.
+These announcements are relayed to other connected peers, and so
 on until they reach the majority of nodes on the network. Messages that have
 already been seen are dropped, to prevent messages from propagating forever.
 Gossip messages may be retained by nodes for a certain amount of time, so that
-they can be served to new nodes joining the network. This *inventory
+they can be served to new nodes joining the network. The *inventory
 announcement* message has the following shape:
 
     InventoryAnnouncement = (
         NodeId,
-        Vec<ProjectId>,
+        Vec<RepositoryId>,
         Timestamp,
         Signature,
     )
@@ -313,13 +321,13 @@ looks like this:
 
     RefsAnnouncement = (
         NodeId,
-        ProjectId,
+        RepositoryId,
         Map<RefName, CommitId>,
         Signature,
     )
 
 It contains the identifier of the node announcing the updated references, the
-project under which these refs reside, the map of reference names (`RefName`)
+repository under which these refs reside, the map of reference names (`RefName`)
 with their new commit hashes (`CommitId`) and a signature from the publishing
 node (`NodeId`), over the refs and project identifier.
 
@@ -332,8 +340,8 @@ relayed to interested nodes, ie. nodes that are hosting the given project,
 as they will usually be followed by a `git-fetch`.
 
 We should also note that the `NodeId` in this case is not only the announcer
-of these updated references, but the *author*. When Alice pushes changes to
-a project, she announces these changes over the network using a reference
+of these updated references, but may be the *author*. When Alice pushes changes
+to a project, she announces these changes over the network using a reference
 announcement, via her own node.
 
 ### Node Announcements
@@ -515,15 +523,19 @@ over previous designs that used a "monorepo":
 
 ### Layout
 
+Each project under radicle is stored in a bare Git repository containing
+the local user's refs, as well as the refs of all of the peers that the
+user's node is configured to track. A simple "namespacing" scheme can be used,
+similar to the one used by git for remote tracking branches.
+
 Since nodes replicate Git data from other nodes, a partitioning scheme is
 needed to separate references belonging to each node within each project.
-This can be achieved by using a node's identifier to namespace git references,
-since references are by their nature hierarchical, eg.
-`refs/remotes/alice/heads/master`.
+This can be achieved by using a node's unique identifier (its public key)
+to namespace Git references, since references are by their nature hierarchical.
 
 #### Special References
 
-To store project metadata, special git references are used. These are references
+To store project metadata, special Git references are used. These are references
 that are written to a known location that doesn't vary between projects, and in
 some cases is meant to be hidden from the user, and accessed only through
 purpose-built tooling.
@@ -561,9 +573,9 @@ hierarchy.
 In a project with multiple delegates, for example, Alice, Bob and Eve, each
 would have their *own* `master` branch which only they could write to, eg.:
 
-    alice/refs/heads/master
-    bob/refs/heads/master
-    eve/refs/heads/master
+    <alice>/refs/heads/master
+    <bob>/refs/heads/master
+    <eve>/refs/heads/master
 
 So how does a contributor know which of those branches is the canonical one?
 The protocol itself does not have a notion of canonicity. It is left up to
