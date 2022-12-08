@@ -15,9 +15,8 @@ Introduction
 
 One of the key components of the Radicle network is the storage
 layer. A key aspect of this component is that it is local-first. It
-must be able to hold the view of the local operator's view of a
-project as well as the view of the peers that the operator is
-interested in.
+must be able to hold the local operator's view of a project as well as
+the view of the peers that the operator is interested in.
 
 Overview
 --------
@@ -25,8 +24,8 @@ Overview
 All nodes in the network must keep a local copy of the data they are
 interested in. For local users this improves the experience of
 interacting with the data -- not needing a server to compute data for
-you and being able to work offline. For local users and seeding nodes
-in the network this improves the availability of data.
+you and being able to work offline. This improves the availability of
+data across the network.
 
 The storage layer must also be designed for efficient replication of
 data between peers in the network. For this reason, `git` is used as
@@ -36,7 +35,7 @@ between two machines ([Transfer Protocols][git-protocol]).
 
 With the above in mind, this RIP proposes a storage layer that
 fulfills the following requirements:
-1. It can be stored, locally, on disk.
+1. It is able to keep a local copy of the working dataset.
 2. It can store multiple resources -- specifically collaborative
    projects.
 3. For each resource it can represent multiple peers' views of said
@@ -70,14 +69,16 @@ Storage Home
 
 It is trivial to store `git` repositories, locally, on disk. It is
 also efficient to do so. The storage must be stored under the name
-`storage` found under one of two base directories.
+`storage` found under one of two base directories -- either the user's
+home profile (as per the native operating system), or the `RAD_HOME`
+environment variable.
 
 If the `RAD_HOME` environment variable is set, the directory it points
 to will be used as the base directory.
 
 | Value                        | Example                       |
 | ---------------------------- | ------------------------------|
-| `$RAD_HOME/storage` | /home/alice/MyRadicle/storage |
+| `$RAD_HOME/storage`          | /home/alice/MyRadicle/storage |
 
 If `RAD_HOME` is not set, the directory `.radicle` will be used within
 the native operating system's home directory is used, i.e. `HOME` on
@@ -95,9 +96,9 @@ Layout
 The layout must support multiple resources and multiple peers per
 resource. Under the `storage` directory, each resource will be a [bare
 git repository][git-bare]. For each resource in the storage, it must
-have a stable and unique identifier. This is to ensure that resources
-are stored uniquely in the `storage` and can be easily addressed by
-their identifier.
+have a stable and globally unique identifier. This is to ensure that
+resources are stored uniquely in the `storage` and can be easily
+addressed by their identifier.
 
 ```
 storage/
@@ -186,7 +187,8 @@ There are two aspects for interoperability with `git`:
 1. Remote replication
 2. Linking to a working copy
 
-In the next sections we will cover how the above layout works.
+In the next sections we will cover how the above works with the
+storage layout.
 
 ### Remote Replication
 
@@ -204,7 +206,7 @@ A working copy is a local replica of the resource -- that is each
 working copy corresponds to one resource in the storage -- where the
 operator makes their own changes to the code base. This can be
 compared to the way one would `git clone` from a mirrored repository,
-e.g. GitHub, GitLab, etc. They can then make changes and push to the
+e.g. GitHub, GitLab, etc. One can then make changes and push to the
 mirror. In the case of Radicle, fetching and pushing changes is
 between the working copy and the local-first storage.
 
@@ -212,12 +214,12 @@ The connection between the working copy and the storage is maintained
 by a series of `git` [remotes][git-remotes]. Each `git` remote
 represents a single peer -- or namespace -- for that resource.
 
-The name, i.e. `[remote."<name>"]`, may be any value the operator
-wishes to use. For example, the `<pubkey>` of the peer could be used,
-or a nickname.
+The name, i.e. `[remote."name"]`, is open to be defined by the
+operator (or application), for example, the operator may use the
+public key of the peer, `origin`, `rad`, a nickname `finto`, etc.
 
-The `url` must be able to resolve the local storage's resource that
-this working copy corresponds to.
+The `url` of the remote must be able to resolve the local storage's
+resource that this working copy corresponds to.
 
 Since `gitnamespaces` are used, the `fetch` [refspec][git-refspec] may
 be:
@@ -240,9 +242,9 @@ that is being used for the operation. This can be achieved using `git
 --namespace=<ns>` or `GIT_NAMESPACE=<ns> git`. Unfortunately, this
 does not disallow the pushing to other peer's namespaces, nor allows
 signing pushed references to one's own namespace. This is discussed in
-[Future Work](#Future-Work).
+[Remote Helper](#Remote-Helper).
 
-To ensure `gitnamespaces` worked as expected the author ran through a
+To ensure `gitnamespaces` work as expected the author ran through a
 worked example which is demonstrated in the [Appendix](#Appendix).
 
 ### Alternative Designs
@@ -301,16 +303,7 @@ This problem is only compounded with [`refs/tags`][refs], where
 pushing a tag to a remote will always DWIM and target the `refs/tags`
 namespace -- unless otherwise specified.
 
-Future Work
------------
-
-### Canonical References
-
-You may have noticed that in the new [layout](#Layout) the top-level
-namespace is left for canonical references. The definition and
-verification of canonicity is left for a future RIP.
-
-### Return of `git-remote-rad`
+### Remote Helper
 
 In [Working Copy](#Working-Copy), it was discussed that there is no
 way for a `git` remote to be configured so that it is aware of extra
@@ -321,7 +314,47 @@ and signing references.
 These three requirements can be solved by introducing a
 `git-remote-rad` helper binary that can supply the namespace, ensure
 the peer namespaces are respected, and that the signed references are
-updated. This is left to another RIP to define.
+updated.
+
+#### URL
+
+The `url` scheme for a given remote is of the form:
+
+```
+rad://<resource>[/<pubkey>]
+```
+
+* The `rad://` scheme informs `git` to look for an executable
+  `git-remote-rad` which will be executed during a `git-push` or
+  `git-fetch`.
+* The `<resource>` component is the resource identifier to be found in
+  the storage.
+* The `<pubkey>` is the namespace for which the the `--namespace`
+  option will be set to. If `<pubkey>` is not specified, then the
+  local operator's key is used.
+
+#### Authorization
+
+Since pushing to other peer's namespaces is disallowed, the value of
+`<pubkey>` will be used to authorize whether a `git push` to a
+particular `url` is allowed. If the `<pubkey>` of the `url` does not
+match the local operator's key, then it must reject the push. Note
+that no such authorization is needed for a `git fetch`.
+
+#### Signing the Reference Set
+
+To ensure that the local operator's reference set is cryptographically
+verifiable, the reference set is signed with the operator's key during
+a `git push` to their own namespace.
+
+Future Work
+-----------
+
+### Canonical References
+
+You may have noticed that in the new [layout](#Layout) the top-level
+namespace is left for canonical references. The definition and
+verification of canonicity is left for a future RIP.
 
 Appendix
 --------
