@@ -41,7 +41,7 @@ which is still very much applicable to the Heartwood protocol:
 > such that repository views can be replicated according to the trust
 > relationships between peers (“tracking”).
 >
-> Our model is loosely based on The Update Framework (TUF)[^4], conceived as a
+> Our model is loosely based on The Update Framework (TUF)[^0], conceived as a
 > means of securely distributing software packages.
 
 With this in mind, there are three core components to the Radicle identity
@@ -55,8 +55,8 @@ Peer Identity
 -------------
 Since Radicle repositories on the network are created by peers, we must first
 establish the concept of a *peer identity*. In Heartwood, peers are simply
-identified by their public key. This key is an Ed25519[^5] key that is encoded
-as a DID using the `did:key` method[^0]. DIDs are used for interoperability
+identified by their public key. This key is an Ed25519[^1] key that is encoded
+as a DID using the `did:key` method[^2]. DIDs are used for interoperability
 with other systems as well as allowing for other types of identifiers in the
 future.
 
@@ -75,12 +75,10 @@ identities. A repository identity consists of an identity document and an
 associated unique identifier.
 
 The identity document is a JSON document associated with a repository on Radicle.
-The minimal identity document looks like this:
+The *hypothetical* minimal identity document looks like this:
 
     { "delegates": ["did:key:z6MknSLrJoTcukLrE435hVNQT4JUhbvWLX4kUzqkEStBU8Vi"],
-      "threshold": 1,
-      "payload": {}
-    }
+      "threshold": 1 }
 
 It describes a repository with a single *delegate*. Delegates are trusted
 entities that can sign within the scope of a given repository. In the
@@ -135,7 +133,7 @@ support.
 
 <small>Figure 1. Fictional example of an identity with multiple payloads</small>
 
-Payload IDs use reverse domain-name notation[^1] and are comprised of two
+Payload IDs use reverse domain-name notation[^3] and are comprised of two
 parts: an *authority*, eg. `radicle.xyz`, and a *name*, eg. `project`. To keep
 payload types globally unique, developers must control the authority (domain)
 under which they live.
@@ -168,12 +166,12 @@ peer-to-peer network. This identifier must meet certain criteria:
 4. It must allow for easy retrieval of the document from storage.
 
 To fulfill the above, and given that Radicle uses Git for storage of repository
-data, we choose to use the *Git Object ID* of the identity document, as
+data, we choose to use the *Git Object ID*[^4] of the identity document, as
 identifier. Git object IDs, or *OIDs* are SHA-1 checksums of their content,
 prefixed with a short header. We can compute this OID using the `git hash-object`
 command. But before doing so, we must take care of one last thing: to make
 the process of hashing our identity document fully deterministic, we must first
-ensure our document is in canonical JSON form[^3]. This prevents things like
+ensure our document is in canonical JSON form[^5]. This prevents things like
 whitespace or key ordering from influencing the document hash and therefore
 the identifier. In turn, this makes the identifier easier to compute correctly.
 
@@ -195,7 +193,7 @@ The output should be:
 
 This SHA-1 hash is the document's OID. To turn it into a Radicle repository
 identifer, we encode the underlying 20-byte hash value using `multibase`
-encoding[^4] with the `base-58-btc` alphabet; the same encoding used for the
+encoding[^6] with the `base-58-btc` alphabet; the same encoding used for the
 `did:key` method, and prefix `rad:` to it, making it a valid URN:
 
     "rad" ":" multibase(base58-btc, raw-oid-bytes)
@@ -293,8 +291,6 @@ under the `gpgsig` key, and be encoded in the SSH signature format.
      GPp0HqxaB911OnSAr6bwU=
      -----END SSH SIGNATURE-----
 
-    Update identity.
-
 We proceed in this manner until the last commit in the history. If all commits
 pass this verification process, we consider the identity valid.
 
@@ -304,9 +300,10 @@ verification is done by using the `delegates` and `threshold` values of the
 
 ---
 
-[^0]: https://w3c-ccg.github.io/did-method-key/
-[^1]: https://en.wikipedia.org/wiki/Reverse_domain_name_notation
-[^2]: https://git-scm.com/book/en/v2/Git-Internals-Git-Objects
-[^3]: https://datatracker.ietf.org/doc/html/rfc8785
-[^4]: https://theupdateframework.github.io/specification/latest/
-[^5]: https://ed25519.cr.yp.to/
+[^0]: https://theupdateframework.github.io/specification/latest/
+[^1]: https://ed25519.cr.yp.to/
+[^2]: https://w3c-ccg.github.io/did-method-key/
+[^3]: https://en.wikipedia.org/wiki/Reverse_domain_name_notation
+[^4]: https://git-scm.com/book/en/v2/Git-Internals-Git-Objects
+[^5]: https://datatracker.ietf.org/doc/html/rfc8785
+[^6]: https://w3c-ccg.github.io/multibase/
