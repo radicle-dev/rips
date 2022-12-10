@@ -13,7 +13,7 @@ In RIP #1, we discussed *repository identity*, and the *identity document*.
 We said that to make it possible for repositories to be hosted in a peer-to-peer
 network, Git repositories on their own are not enough: we need a secure way to
 identify repositories that goes beyond source code. We need a stable identifier
-and a mechanism for self-authenticating repositories against this identifier,
+and a mechanism for self-certifying repositories against this identifier,
 so that changes to source code can be verified locally, by users.
 
 In this RIP, we discuss the method through which we can achieve the above in
@@ -264,18 +264,19 @@ original blob from which we computed the repository identifier is contained in
 the tree pointed to by the root commit of the document history. The root commit
 is hence valid for a given RID if and only if it contains a blob under the name
 `radicle.json` containing a valid identity document which hashes to the given
-RID. This initial commit does not require any signatures; its validity is
-based solely on its hash.
+RID, *and* the commit is signed by all delegates in the initial `delegates` list.
 
 Once the root commit is verified, we can proceed to the next commit. Since
-the document may have changed in this commit, it's no longer enough to
-verify its hash. Instead, we make sure that two conditions are fulfilled:
+the document may have changed in this commit, the RID is no longer useful for
+verifying this commit. Instead, we make sure that two conditions are fulfilled:
 
 1. The commit containing the updated document is signed by a number of keys
    greater than or equal to the `threshold` property of the *previous*, valid
    version of the document.
-2. Each commit signature belongs to a key that is part of the `delegates` set
-   of the previous document version.
+2. Each of the aforementioned signatures belongs to a key that is part of the
+   `delegates` set of the previous document version.
+
+> Git commit signatures can be verified with the `git verify-commit` tool.
 
 These delegate signatures are expected to be included in the commit header
 under the `gpgsig` key, and be encoded in the SSH signature format.
@@ -290,6 +291,14 @@ under the `gpgsig` key, and be encoded in the SSH signature format.
      AAAAQIQvhIewOgGfnXLgR5Qe1ZEr2vjekYXTdOfNWICi6ZiosgfZnIqV0enCPC4arVqQg+
      GPp0HqxaB911OnSAr6bwU=
      -----END SSH SIGNATURE-----
+    gpgsig -----BEGIN SSH SIGNATURE-----
+     U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgvjrQogRxxLjzzWns8+mKJAGzEX
+     4fm2ALoN7pyvD2ttQAAAADZ2l0AAAAAAAAAAZzaGE1MTIAAABTAAAAC3NzaC1lZDI1NTE5
+     AAAAQI84aPZsXxlQigpy1/Y/iJSmHSS//CIgvqvUMQIb/TM2vhCKruduH0cK02k9G8wOI+
+     EUMf2bSDyxbJyZThOEiAs=
+     -----END SSH SIGNATURE-----
+
+<small>A Git commit header with two SSH signatures.</small>
 
 We proceed in this manner until the last commit in the history. If all commits
 pass this verification process, we consider the identity valid.
