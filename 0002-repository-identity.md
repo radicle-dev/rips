@@ -19,6 +19,18 @@ so that changes to source code can be verified locally, by users.
 In this RIP, we discuss the method through which we can achieve the above in
 a secure, decentralized way.
 
+Table of Contents
+-----------------
+* [Overview](#overview)
+* [Peer Identity](#peer-identity)
+* [Repository Identity](#repository-identity)
+    * [Validation](#validation)
+* [The Repository Identifier](#the-repository-identifier)
+* [Identity Storage](#identity-storage)
+    * [Verification](#verification)
+* [Credits](#credits)
+* [Copyright](#copyright)
+
 Overview
 --------
 To introduce the topic of identity, we point the reader to the opening
@@ -307,7 +319,13 @@ It's important to restate that for any commit `C`, other than the root commit,
 verification is done by using the `delegates` and `threshold` values of the
 *parent* commit to `C`, which has already been verified.
 
----
+Credits
+-------
+* Kim Altintop, for the original design this system is based on
+
+Copyright
+---------
+This document is licensed under the Creative Commons CC0 1.0 Universal license.
 
 [^0]: https://theupdateframework.github.io/specification/latest/
 [^1]: https://ed25519.cr.yp.to/
