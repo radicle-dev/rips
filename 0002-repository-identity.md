@@ -28,6 +28,7 @@ Table of Contents
 * [The Repository Identifier](#the-repository-identifier)
 * [Identity Storage](#identity-storage)
     * [Verification](#verification)
+* [Closing Thoughts](#closing-thoughts)
 * [Credits](#credits)
 * [Copyright](#copyright)
 
@@ -318,6 +319,12 @@ pass this verification process, we consider the identity valid.
 It's important to restate that for any commit `C`, other than the root commit,
 verification is done by using the `delegates` and `threshold` values of the
 *parent* commit to `C`, which has already been verified.
+
+Closing Thoughts
+----------------
+In this RIP we described an identity system for Git repositories that can be
+used to securely distribute code on a peer-to-peer network. The system is
+self-certifying and requires only basic Git primitives to implement.
 
 Credits
 -------
