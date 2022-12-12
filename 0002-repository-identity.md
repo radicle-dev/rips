@@ -158,7 +158,7 @@ Repositories which include this type of payload are sometimes called *projects*.
 
 An identity document is valid if the following conditions are met:
 
-* There is at leat *one* `delegate`, but no more than `255`.
+* There is at least *one* `delegate`, but no more than `255`.
 * Strings are not empty, and at most `255` characters long.
 * The `threshold` is not zero and not greater than the number of `delegates`.
 * The items in `delegates` are valid DIDs.
