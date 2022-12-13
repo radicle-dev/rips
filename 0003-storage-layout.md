@@ -101,14 +101,15 @@ resource. Under the `storage` directory, each resource will be a [bare
 git repository][^1]. For each resource in the storage, it must
 have a stable and globally unique identifier. This is to ensure that
 resources are stored uniquely in the `storage` and can be easily
-addressed by their identifier.
+addressed by their identifier. This identifier is established as an
+RID in RIP#2's section on The Repository Identifier.
 
 ```
 storage/
-  <resource>/   # Some project
-    refs/       # All Git references
-  <resource>/
-  <resource>/
+  <RID>/   # Some resource, e.g. a project
+    refs/  # All Git references
+  <RID>/
+  <RID>/
    …
 ```
 
@@ -121,10 +122,17 @@ the same piece of work, akin to `git` itself.
 
 To have this separation, the [gitnamespaces][^2] feature of
 `git` is used. For each peer, including the local operator, their
-unique identifier is used as the namespace within the `<resource>`
-repository. For now, this unique identifier is assumed to be a
-hash-encoded value of the peer's public key, denoted `<pubkey>` from
-here onwards.
+unique identifier is used as the namespace within the `<RID>`
+repository. The identifier used is the Peer Identity, as outlined in
+RIP#2.
+
+> In Heartwood, peers are simply identified by their public key. This
+> key is an Ed25519 key that is encoded as a DID using the `did:key`
+> method. DIDs are used for interoperability with other systems as
+> well as allowing for other types of identifiers in the future.
+
+The storage must use the encoded public key portion of the `did:key`
+string as the namespace path, denoted as `<pubkey>` going forward.
 
 This means that a peer's references will be scoped by
 `refs/namespaces/<pubkey>`. We demonstrate this organisation below:
@@ -140,6 +148,9 @@ storage/
               master               # <pubkey>'s master branch
             tags/                  # <pubkey>'s tags
              …
+            rad/
+              id                   # <pubkey>'s version of the
+                                   # resource identity document
         <pubkey>/
           refs/
             heads/
@@ -549,5 +560,5 @@ This document is licensed under the Creative Commons CC0 1.0 Universal license.
 [^3]: https://git-scm.com/book/en/v2/Git-on-the-Server-The-Protocols
 [^4]: https://git-scm.com/book/en/v2/Git-Internals-The-Refspec
 [^5]: https://git-scm.com/book/en/v2/Git-Basics-Working-with-Remotes
-[^7]: https://git-scm.com/book/en/v2/Git-Internals-Git-References
 [^6]: https://git-scm.com/docs/git-remote
+[^7]: https://git-scm.com/book/en/v2/Git-Internals-Git-References
