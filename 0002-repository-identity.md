@@ -162,7 +162,7 @@ An identity document is valid if the following conditions are met:
 * Strings are not empty, and at most `255` characters long.
 * The `threshold` is not zero and not greater than the number of `delegates`.
 * The items in `delegates` are valid DIDs.
-* The is a `payload` property with at least one payload object and a valid
+* There is a `payload` property with at least one payload object and a valid
   payload ID.
 
 The Repository Identifier
