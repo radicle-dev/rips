@@ -1,5 +1,5 @@
 ---
-RIP: 2
+RIP: 3
 Title: Storage Layout
 Author: '@fintohaps <fintan.halpenny@gmail.com>'
 Status: Draft
@@ -30,7 +30,7 @@ data across the network.
 The storage layer must also be designed for efficient replication of
 data between peers in the network. For this reason, `git` is used as
 the underlying database as it already efficiently exchanges data
-between two machines ([Transfer Protocols][git-protocol]).
+between two machines ([Transfer Protocols][^0]).
 
 
 With the above in mind, this RIP proposes a storage layer that
@@ -51,9 +51,12 @@ Table of Contents
     * [Working Copy](#working-copy)
     * [Alternative Designs](#alternative-designs)
         * [Linking to a Working Copy](#linking-to-a-working-copy)
+    * [Remote Helper](#remote-helper)
+        * [Url](#url)
+        * [Authorization](#authorization)
+        * [Signing the Reference Set](#signing-the-reference-set)
 * [Future Work](#future-work)
     * [Canonical References](#canonical-references)
-    * [Return of `git-remote-rad`](#return-of-git-remote-rad)
 * [Appendix](#appendix)
     * [Worked Example](#worked-example)
         * [Setup](#setup)
@@ -95,7 +98,7 @@ Layout
 
 The layout must support multiple resources and multiple peers per
 resource. Under the `storage` directory, each resource will be a [bare
-git repository][git-bare]. For each resource in the storage, it must
+git repository][^1]. For each resource in the storage, it must
 have a stable and globally unique identifier. This is to ensure that
 resources are stored uniquely in the `storage` and can be easily
 addressed by their identifier.
@@ -116,7 +119,7 @@ reference namespaces, i.e. `heads`, `tags`, and `notes`.
 This is to allow for peers to maintain different sets of changes for
 the same piece of work, akin to `git` itself.
 
-To have this separation, the [gitnamespaces][namespaces] feature of
+To have this separation, the [gitnamespaces][^2] feature of
 `git` is used. For each peer, including the local operator, their
 unique identifier is used as the namespace within the `<resource>`
 repository. For now, this unique identifier is assumed to be a
@@ -194,8 +197,8 @@ storage layout.
 
 Remote replication pertains to fetching data from a remote peer. Since
 the storage is a series of `git` repositories, the remote transfer of
-data can be achieved via the `git` [protocols][git-server-protocols]
-and the correct [refspecs][git-refspec]. Further detail is left to
+data can be achieved via the `git` [protocols][^3]
+and the correct [refspecs][^4]. Further detail is left to
 another RIP, since the definition of the protocol use and the
 cryptographic verification of fetched data is out of scope for this
 RIP.
@@ -211,7 +214,7 @@ mirror. In the case of Radicle, fetching and pushing changes is
 between the working copy and the local-first storage.
 
 The connection between the working copy and the storage is maintained
-by a series of `git` [remotes][git-remotes]. Each `git` remote
+by a series of `git` [remotes][^5]. Each `git` remote
 represents a single peer -- or namespace -- for that resource.
 
 The name, i.e. `[remote."name"]`, is open to be defined by the
@@ -219,9 +222,9 @@ operator (or application), for example, the operator may use the
 public key of the peer, `origin`, `rad`, a nickname `finto`, etc.
 
 The `url` of the remote must be able to resolve the local storage's
-resource that this working copy corresponds to.
+resource corresponding to this working copy.
 
-Since `gitnamespaces` are used, the `fetch` [refspec][git-refspec] may
+Since `gitnamespaces` are used, the `fetch` [refspec][^4] may
 be:
 
 ```
@@ -254,9 +257,9 @@ namespaces, i.e. `refs/remotes/<pubkey>`. This particular namespace is
 deemed special by `git` and its tooling. A "remote" reference is one
 that corresponds to how a reference is fetched from a remote
 location. The remote location and how to fetch/push from/to it is
-configured using [`git remote`][remote]. When `git fetch` is used for
+configured using [`git remote`][^6]. When `git fetch` is used for
 that remote, it will place the references under
-[`refs/remotes`][refs].
+[`refs/remotes`][^7].
 
 #### Linking to a Working Copy
 
@@ -299,7 +302,7 @@ general. It could be `refs/heads/master`,
 etc. `git` will assume that what you meant was `refs/heads/master` and
 will look for this on the remote end, but of course it does not exist.
 
-This problem is only compounded with [`refs/tags`][refs], where
+This problem is only compounded with [`refs/tags`][^7], where
 pushing a tag to a remote will always DWIM and target the `refs/tags`
 namespace -- unless otherwise specified.
 
@@ -530,21 +533,21 @@ Credits
 -------
 
 * Kim Altintop -- for shining the light on the, lesser known,
-  [gitnamespaces][namespaces] feature while developing `radicle-link`.
+  [gitnamespaces][^2] feature while developing `radicle-link`.
 * Alex Good -- for attempting to implement a feature dubbed "ref
   rewriting" to solve the remotes problem, before realising that using
-  [gitnamespaces][namespaces] could be a better option.
+  [gitnamespaces][^2] could be a better option.
 
 Copyright
 ---------
 
 This document is licensed under the Creative Commons CC0 1.0 Universal license.
 
-[namespaces]: https://git-scm.com/docs/gitnamespaces
-[refs]: https://git-scm.com/book/en/v2/Git-Internals-Git-References
-[remote]: https://git-scm.com/docs/git-remote
-[git-bare]: https://git-scm.com/docs/git-init#Documentation/git-init.txt---bare
-[git-protocol]: https://git-scm.com/book/en/v2/Git-Internals-Transfer-Protocols
-[git-server-protocols]: https://git-scm.com/book/en/v2/Git-on-the-Server-The-Protocols
-[git-refspec]: https://git-scm.com/book/en/v2/Git-Internals-The-Refspec
-[git-remotes]: https://git-scm.com/book/en/v2/Git-Basics-Working-with-Remotes
+[^0]: https://git-scm.com/book/en/v2/Git-Internals-Transfer-Protocols
+[^1]: https://git-scm.com/docs/git-init#Documentation/git-init.txt---bare
+[^2]: https://git-scm.com/docs/gitnamespaces
+[^3]: https://git-scm.com/book/en/v2/Git-on-the-Server-The-Protocols
+[^4]: https://git-scm.com/book/en/v2/Git-Internals-The-Refspec
+[^5]: https://git-scm.com/book/en/v2/Git-Basics-Working-with-Remotes
+[^7]: https://git-scm.com/book/en/v2/Git-Internals-Git-References
+[^6]: https://git-scm.com/docs/git-remote
